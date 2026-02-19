@@ -3,9 +3,8 @@ import os
 import subprocess
 import time
 from urllib.parse import urlparse
-
+import sys
 import requests
-
 from src.configs import ConfigLoader
 
 
@@ -39,7 +38,7 @@ def _start_worker(name, port, controller, definition):
     else:
         subprocess.Popen(
             [
-                "python",
+                sys.executable,
                 "-m",
                 "src.server.task_worker",
                 name,
@@ -90,7 +89,7 @@ if __name__ == "__main__":
                 o = urlparse(config["controller"])
                 subprocess.Popen(
                     [
-                        "python",
+                        sys.executable,
                         "-m",
                         "src.server.task_controller",
                         "--port",
@@ -99,7 +98,7 @@ if __name__ == "__main__":
                 )
         else:
             subprocess.Popen(
-                ["python", "-m", "src.server.task_controller", "--port", "5000"]
+                [sys.executable, "-m", "src.server.task_controller", "--port", "5000"]
             )
         for i in range(10):
             try:

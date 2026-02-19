@@ -149,7 +149,9 @@ class Session:
         )
         self.history.append(
             ChatHistoryItem(
-                role="agent", content=agent_response.content or agent_response.status
+                role="agent",
+                content=agent_response.content or agent_response.status,
+                reasoning_content=agent_response.reasoning_content
             )
         )
         return agent_response

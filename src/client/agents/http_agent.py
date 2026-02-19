@@ -1,10 +1,8 @@
 import contextlib
 import time
 import warnings
-
 import requests
 from urllib3.exceptions import InsecureRequestWarning
-
 from src.typings import *
 from src.utils import *
 from ..agent import AgentClient
@@ -215,8 +213,18 @@ class HTTPAgent(AgentClient):
                 if isinstance(resp, dict) and "choices" in resp and len(resp["choices"]) > 0:
                     message = resp["choices"][0].get("message", {})
                     content = message.get("content", "")
-                    if content:
-                        return content
+                    # extract reasoning_content
+                    reasoning = message.get("reasoning_content", "")
+
+                    # print("\n=== CONTENUTO PRINCIPALE ===")
+                    # print(content)
+                    # print("\n=== REASONING ===")
+                    # print(reasoning)
+
+                    return{
+                        "content": content,
+                        "reasoning_content": reasoning
+                    }
 
                 # Fallback to return_format if not OpenAI format
                 return self.return_format.format(response=resp)

@@ -1,0 +1,14 @@
+module: src.client.agents.HTTPAgent
+parameters:
+  url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
+  headers:
+    Content-Type: application/json
+    Authorization: Bearer QWEN_KEY
+  body:
+    temperature: 0
+    enable_thinking: true # added to save reasoning_content
+  prompter:
+    name: role_content_dict
+    args:
+      agent_role: assistant
+  return_format: "{response[choices][0][message][content]}"

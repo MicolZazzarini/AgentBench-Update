@@ -1,7 +1,7 @@
+
 import json
 import re
 from typing import Callable, Dict, List, Any
-
 from src.server.task import Task, Session
 from src.typings import TaskOutput, SampleStatus, AgentOutputStatus
 from .Interaction import Container
@@ -135,17 +135,25 @@ class DBBench(Task):
         else:
             error = ""
         if entry["type"][0] in ("INSERT", "DELETE", "UPDATE"):
+            import hashlib
+
             columns = ",".join(
                 [
                     f"`{column['name']}`"
                     for column in entry["table"]["table_info"]["columns"]
                 ]
             )
-            md5_query = (
-                f"select md5(group_concat(rowhash order by rowhash)) as hash "
-                f"from( SELECT substring(MD5(CONCAT_WS(',', {columns})), 1, 5) AS rowhash FROM `{db}`) as sub;"
-            )
-            answer = container.execute(md5_query, db)
+
+            # Prendiamo tutte le righe ordinate
+            select_query = f"SELECT {columns} FROM `{db}`.`{db}` ORDER BY {columns};"
+            rows = container.execute(select_query, db)
+
+            # Normalizziamo output
+            rows_str = "".join(str(row) for row in rows)
+
+            # Calcolo MD5 in Python
+            answer = hashlib.md5(rows_str.encode()).hexdigest()
+
         container.execute(f"drop database `{db}`")
         return TaskOutput(
             status=finish_reason,

@@ -5,7 +5,7 @@ class RuleBase:
     def check(self, obj) -> bool:
         raise NotImplementedError()
 
-
+# controlla se qualcosa è contenuto in qualcos'altro
 class ContainRule(RuleBase):
     def __init__(self, target, reverse=False) -> None:
         """
@@ -21,7 +21,7 @@ class ContainRule(RuleBase):
         else:
             return self.target in obj
 
-
+# negazione logica
 class NotRule(RuleBase):
     def __init__(self, rule: RuleBase) -> None:
         self.rule = rule
@@ -29,7 +29,7 @@ class NotRule(RuleBase):
     def check(self, obj) -> bool:
         return not self.rule.check(obj)
 
-
+# accetta lista di regole, tutte devono essere vere
 class AndRule(RuleBase):
     def __init__(self, rules: List[RuleBase]) -> None:
         self.rules = rules
@@ -37,7 +37,7 @@ class AndRule(RuleBase):
     def check(self, obj) -> bool:
         return all(rule.check(obj) for rule in self.rules)
 
-
+# almeno una regola deve essere vera
 class OrRule(RuleBase):
     def __init__(self, rules: List[RuleBase]) -> None:
         self.rules = rules

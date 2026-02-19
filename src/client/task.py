@@ -72,8 +72,16 @@ class TaskClient:
         latest_result = result
         while SampleStatus(result["output"]["status"]) == SampleStatus.RUNNING:
             try:
-                content = agent.inference(result["output"]["history"])
-                response = AgentOutput(content=content)
+                # updated to save reasoning_content too
+                agent_result = agent.inference(result["output"]["history"])
+
+                if isinstance(agent_result, dict):
+                    response = AgentOutput(
+                        content = agent_result.get("content"),
+                        reasoning_content=agent_result.get("reasoning_content")
+                    )
+                else:
+                    response = AgentOutput(content=agent_result)
             except AgentContextLimitException:
                 response = AgentOutput(status=AgentOutputStatus.AGENT_CONTEXT_LIMIT)
             except Exception as e:

@@ -43,3 +43,4 @@ class Assignment(BaseModel):
 class ChatHistoryItem(BaseModel):
     role: Literal["user", "agent"]
     content: str
+    reasoning_content: Union[str, None] = None

@@ -21,3 +21,12 @@ vicuna-13b:
 vicuna-7b:
   parameters:
     model_name: "vicuna-7b-v1.5"
+
+qwen3:
+  module: "src.client.agents.FastChatAgent"
+  parameters:
+    name: "qwen3"
+    controller_address: "http://localhost:55555"  
+    max_new_tokens: 512
+    temperature: 0
+
