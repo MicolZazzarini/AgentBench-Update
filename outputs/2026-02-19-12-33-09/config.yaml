@@ -1,0 +1,38 @@
+assignments:
+- agent: qwen3-max-chat
+  task: dbbench-std
+concurrency:
+  agent:
+    qwen3-max-chat: 5
+  task:
+    dbbench-std: 5
+definition:
+  agent:
+    qwen3-max-chat:
+      module: src.client.agents.HTTPAgent
+      parameters:
+        body:
+          enable_thinking: true
+          max_tokens: 1024
+          model: qwen3-30b-a3b-thinking-2507
+          temperature: 0
+        headers:
+          Authorization: Bearer sk-4f3d557a216746bf8ef18c0ce1b3c5bf
+          Content-Type: application/json
+        name: qwen3-30b-a3b-thinking-2507
+        prompter:
+          args:
+            agent_role: assistant
+          name: role_content_dict
+        return_format: '{response[choices][0][message][content]}'
+        url: https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions
+  task:
+    dbbench-std:
+      module: src.client.TaskClient
+      parameters:
+        concurrency: 1
+        controller_address: http://localhost:5000/api
+        data_file: data/dbbench/standard.jsonl
+        max_round: 15
+        name: dbbench-std
+output: outputs/2026-02-19-12-33-09

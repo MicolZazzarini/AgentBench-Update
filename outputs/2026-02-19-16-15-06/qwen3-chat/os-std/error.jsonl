@@ -1,0 +1,5 @@
+{"index": "std-007-bootstrap-00008", "error": "INTERACT_FAILED", "info": "{\"detail\":\"Error: Worker not responding\\n\"}", "output": {"index": null, "status": "running", "result": null, "history": null}, "time": {"timestamp": 1771515865030, "str": "2026-02-19 16:44:25"}}
+{"index": "std-004-Q30-00002", "error": "AGENT_FAILED", "info": "Failed.", "output": {"index": null, "status": "running", "result": null, "history": null}, "time": {"timestamp": 1771516230068, "str": "2026-02-19 16:50:30"}}
+{"index": "std-004-Q30-00001", "error": "AGENT_FAILED", "info": "Failed.", "output": {"index": null, "status": "running", "result": null, "history": null}, "time": {"timestamp": 1771516230068, "str": "2026-02-19 16:50:30"}}
+{"index": "std-004-Q30-00000", "error": "AGENT_FAILED", "info": "Failed.", "output": {"index": null, "status": "running", "result": null, "history": null}, "time": {"timestamp": 1771516239413, "str": "2026-02-19 16:50:39"}}
+{"index": "std-004-Q49-00000", "error": "START_FAILED", "info": "Internal Server Error", "output": null, "time": {"timestamp": 1771516246473, "str": "2026-02-19 16:50:46"}}
