@@ -30,7 +30,7 @@ qwen3-chat:
             model: "qwen3-vl-30b-a3b-thinking"
             max_tokens: 512
 
-qwen3-ollama:
+qwen3:14b-ollama:
   import: "./ollama-qwen.yaml"
   parameters:
     name: "qwen3:14b"
@@ -39,3 +39,11 @@ qwen3-ollama:
       max_tokens: 2048
       temperature: 0
       thinking: true
+
+qwen3-8b-Thinking-ollama:
+  import: "./ollama-qwen.yaml"
+  parameters:
+    name: "Willem27/Qwen3-VL-8B-Thinking:latest"
+    body:
+        model: "Willem27/Qwen3-VL-8B-Thinking:latest"
+        max_tokens: 512

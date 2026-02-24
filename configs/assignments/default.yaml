@@ -6,12 +6,14 @@ concurrency:
     os-std: 5
   agent:
     #qwen3-chat: 5
-    qwen3-ollama: 5
+    #qwen3-ollama: 5
+    qwen3-8b-Thinking-ollama: 5
 
 assignments: 
   - agent: 
       #- qwen3-chat
-      - qwen3-ollama
+      #- qwen3-ollama
+      qwen3-8b-Thinking-ollama
     task:
       #- dbbench-std
       - os-std

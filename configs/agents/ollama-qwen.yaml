@@ -5,8 +5,7 @@ parameters:
     Content-Type: application/json
   body:
     temperature: 0
-    # Questo parametro dice a Ollama di usare il "thinking mode"
-    # thinking: true
+    enable_thinking: true # added to save reasoning_content
   prompter:
     name: role_content_dict
     args:
