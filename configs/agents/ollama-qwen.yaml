@@ -6,7 +6,7 @@ parameters:
   body:
     temperature: 0
     # Questo parametro dice a Ollama di usare il "thinking mode"
-    thinking: true
+    # thinking: true
   prompter:
     name: role_content_dict
     args:
