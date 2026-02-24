@@ -1,0 +1,15 @@
+module: src.client.agents.HTTPAgent
+parameters:
+  url: http://127.0.0.1:11434/v1/chat/completions
+  headers:
+    Content-Type: application/json
+  body:
+    temperature: 0
+    # Questo parametro dice a Ollama di usare il "thinking mode"
+    thinking: true
+  prompter:
+    name: role_content_dict
+    args:
+      agent_role: assistant
+  return_format: "{response[choices][0][message][content]}"
+

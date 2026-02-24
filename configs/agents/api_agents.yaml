@@ -6,7 +6,6 @@ gpt-4o-mini:
             model: "gpt-4o-mini"
             max_tokens: 512
 
-
 text-davinci-003:
     import: "./openai-text.yaml"
     parameters:
@@ -26,9 +25,17 @@ text-davinci-002:
 qwen3-chat:
     import: "./qwen-chat.yaml"
     parameters:
-        name: "qwen3-next-80b-a3b-thinking"
+        name: "qwen3-vl-30b-a3b-thinking"
         body:
-            model: "qwen3-next-80b-a3b-thinking"
-            max_tokens: 1024
+            model: "qwen3-vl-30b-a3b-thinking"
+            max_tokens: 512
 
-
+qwen3-ollama:
+  import: "./ollama-qwen.yaml"
+  parameters:
+    name: "qwen3:14b"
+    body:
+      model: "qwen3:14b"
+      max_tokens: 512
+      temperature: 0
+      thinking: true

@@ -5,11 +5,13 @@ concurrency:
     #dbbench-std: 5
     os-std: 5
   agent:
-    qwen3-chat: 5
+    #qwen3-chat: 5
+    qwen3-ollama: 5
 
 assignments: 
   - agent: 
-      - qwen3-chat
+      #- qwen3-chat
+      - qwen3-ollama
     task:
       #- dbbench-std
       - os-std

@@ -3,7 +3,7 @@ parameters:
   url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
   headers:
     Content-Type: application/json
-    Authorization: Bearer QWEN_KEY
+    Authorization: Bearer sk-4f3d557a216746bf8ef18c0ce1b3c5bf
   body:
     temperature: 0
     enable_thinking: true # added to save reasoning_content

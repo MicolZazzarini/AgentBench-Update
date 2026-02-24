@@ -144,15 +144,11 @@ class DBBench(Task):
                 ]
             )
 
-            # Prendiamo tutte le righe ordinate
-            select_query = f"SELECT {columns} FROM `{db}`.`{db}` ORDER BY {columns};"
-            rows = container.execute(select_query, db)
-
-            # Normalizziamo output
-            rows_str = "".join(str(row) for row in rows)
-
-            # Calcolo MD5 in Python
-            answer = hashlib.md5(rows_str.encode()).hexdigest()
+            md5_query = (
+                f"select md5(group_concat(rowhash order by rowhash)) as hash "
+                f"from( SELECT substring(MD5(CONCAT_WS(',', {columns})), 1, 5) AS rowhash FROM `{db}`) as sub;"
+            )
+            answer = container.execute(md5_query, db)
 
         container.execute(f"drop database `{db}`")
         return TaskOutput(
