@@ -36,6 +36,6 @@ qwen3-ollama:
     name: "qwen3:14b"
     body:
       model: "qwen3:14b"
-      max_tokens: 1024
+      max_tokens: 2048
       temperature: 0
       thinking: true
