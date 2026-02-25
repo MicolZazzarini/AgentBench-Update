@@ -233,7 +233,7 @@ class HTTPAgent(AgentClient):
                         match = re.search(r"<think>(.*?)</think>", content, re.DOTALL)
                         if match:
                             reasoning = match.group(1).strip()
-                            content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                            #content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
                     return{
                         "content": content,

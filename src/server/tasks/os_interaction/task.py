@@ -596,6 +596,10 @@ If the output is too long, I will truncate it. The truncated output is not compl
             print("\n=== RAW AGENT OUTPUT ===")
             print(root.content)
             print("========================\n")
+            
+            print("\n=== REASONING CONTENT ===")
+            print(root.reasoning_content)
+            print("========================\n")
 
             if root.status == AgentOutputStatus.AGENT_CONTEXT_LIMIT: # se supera token limit -> ritorna errore dedicato
                 return TaskSampleExecutionResult(
