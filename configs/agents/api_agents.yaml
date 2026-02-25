@@ -38,6 +38,7 @@ qwen3:14b-ollama:
       model: "qwen3:14b"
       max_tokens: 2048
       temperature: 0
+      think: true
       thinking: true
 
 qwen3-8b-Thinking-ollama:

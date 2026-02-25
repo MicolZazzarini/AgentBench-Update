@@ -5,8 +5,8 @@ parameters:
     Content-Type: application/json
   body:
     temperature: 0
-    # enable_thinking: true # added to save reasoning_content
-    # think: true
+    enable_thinking: true # added to save reasoning_content
+    think: true
   prompter:
     name: role_content_dict
     args:

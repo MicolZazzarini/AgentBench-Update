@@ -10,6 +10,7 @@ dbbench-dev:
     data_file: "data/dbbench/dev.jsonl"
 
 dbbench-std:
+  module: src.server.tasks.dbbench.DBBench
   parameters:
     name: dbbench-std
     data_file: "data/dbbench/standard.jsonl"

@@ -2,8 +2,8 @@ import: definition.yaml
 
 concurrency:
   task:
-    #dbbench-std: 5
-    os-std: 5
+    dbbench-std: 5
+    # os-std: 5
   agent:
     #qwen3-chat: 5
     #qwen3-ollama: 5
@@ -15,7 +15,7 @@ assignments:
       #- qwen3-ollama
       qwen3:14b-ollama
     task:
-      #- dbbench-std
-      - os-std
+      - dbbench-std
+      #- os-std
 
 output: "outputs/{TIMESTAMP}"
