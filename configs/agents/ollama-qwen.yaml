@@ -6,6 +6,7 @@ parameters:
   body:
     temperature: 0
     # enable_thinking: true # added to save reasoning_content
+    # think: true
   prompter:
     name: role_content_dict
     args:
