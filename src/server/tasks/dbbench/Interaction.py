@@ -19,15 +19,26 @@ class Container:
             image,
             name=container_name,
             environment={"MYSQL_ROOT_PASSWORD": self.password},
-            ports={"3306/tcp": None},  # lascia che Docker assegni automaticamente
+            ports={"3306/tcp": None},  # Docker assegna automaticamente
             detach=True,
             tty=True,
             stdin_open=True,
             remove=True,
         )
 
-        # Leggi la porta host mappata dinamicamente
-        self.port = int(self.container.attrs['NetworkSettings']['Ports']['3306/tcp'][0]['HostPort'])
+        # Aspetta che la porta sia disponibile
+        self.port = None
+        for _ in range(30):
+            self.container.reload()  # aggiorna attrs
+            ports = self.container.attrs['NetworkSettings']['Ports']
+            if '3306/tcp' in ports and ports['3306/tcp']:
+                self.port = int(ports['3306/tcp'][0]['HostPort'])
+                break
+            time.sleep(1)
+
+        if self.port is None:
+            self.delete()
+            raise RuntimeError("MySQL container did not expose port 3306")
 
         # Attendi che MySQL sia pronto
         retry = 0
@@ -48,7 +59,7 @@ class Container:
                     raise RuntimeError(f"MySQL did not start after {max_retry} attempts on port {self.port}")
                 time.sleep(2)
             else:
-                break  # connessione avvenuta
+                break
 
     def delete(self):
         if not self.deleted:
