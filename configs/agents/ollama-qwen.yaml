@@ -1,15 +1,13 @@
 module: src.client.agents.HTTPAgent
 parameters:
-  url: http://127.0.0.1:11434/v1/chat/completions
+  url: http://127.0.0.1:11434/api/chat   # 🔴 endpoint nativo Ollama
   headers:
     Content-Type: application/json
   body:
-    temperature: 0
-    # enable_thinking: true # added to save reasoning_content
-    # think: true
+    stream: false
+    think: true
   prompter:
     name: role_content_dict
     args:
       agent_role: assistant
-  return_format: "{response[choices][0][message][content]}"
-
+  return_format: "{response}"
