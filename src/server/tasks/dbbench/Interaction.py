@@ -15,26 +15,33 @@ class Container:
         self.deleted = False
         self.image = image
         self.client = docker.from_env()
+
+        # Trova una porta libera per il container
         p = Container.port + random.randint(0, 10000)
         while self.is_port_open(p):
             p += random.randint(0, 20)
         self.port = p
+
+        # Avvia il container MySQL
         self.container: containers.Container = self.client.containers.run(
             image,
             name=f"mysql_{self.port}",
             environment={
                 "MYSQL_ROOT_PASSWORD": self.password,
             },
-            ports={"3306": self.port},
+            ports={"3306/tcp": self.port},  # porta container → host
             detach=True,
             tty=True,
             stdin_open=True,
             remove=True,
         )
 
-        time.sleep(1)
+        # Attendi qualche secondo che MySQL si avvii
+        time.sleep(3)
 
+        # Prova a connetterti ripetutamente finché MySQL non è pronto
         retry = 0
+        max_retry = 30  # massimo 30 tentativi
         while True:
             try:
                 self.conn = mysql.connector.connect(
@@ -45,24 +52,32 @@ class Container:
                     pool_reset_session=True,
                 )
             except mysql.connector.errors.OperationalError:
-                time.sleep(1)
+                # MySQL non pronto, attendi
+                time.sleep(2)
+                retry += 1
+                if retry > max_retry:
+                    raise RuntimeError(f"MySQL did not start after {max_retry} attempts")
             except mysql.connector.InterfaceError:
-                if retry > 10:
-                    raise
-                time.sleep(5)
+                time.sleep(2)
+                retry += 1
+                if retry > max_retry:
+                    raise RuntimeError(f"MySQL interface error after {max_retry} attempts")
             else:
+                # Connessione avvenuta
                 break
-            retry += 1
 
     def delete(self):
-        self.container.stop()
+        try:
+            self.container.stop()
+        except Exception:
+            pass
         self.deleted = True
 
     def __del__(self):
         try:
             if not self.deleted:
                 self.delete()
-        except:
+        except Exception:
             pass
 
     def execute(
@@ -75,7 +90,7 @@ class Container:
         try:
             with self.conn.cursor() as cursor:
                 if database:
-                    cursor.execute(f"use `{database}`;")
+                    cursor.execute(f"USE `{database}`;")
                     cursor.fetchall()
                 cursor.execute(sql, data, multi=True)
                 result = cursor.fetchall()
@@ -83,27 +98,25 @@ class Container:
             self.conn.commit()
         except Exception as e:
             result = str(e)
+        # Limita la lunghezza della risposta
         if len(result) > 800:
             result = result[:800] + "[TRUNCATED]"
         return result
 
     def is_port_open(self, port) -> bool:
+        # Controlla se il container esiste già
         try:
             self.client.containers.get(f"mysql_{port}")
             return True
         except Exception:
             pass
-        # Create a socket object
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+        # Controlla se la porta è occupata
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            # Try to connect to the specified port
             sock.connect(("localhost", port))
-            # If the connection succeeds, the port is occupied
             return True
         except ConnectionRefusedError:
-            # If the connection is refused, the port is not occupied
             return False
         finally:
-            # Close the socket
             sock.close()
