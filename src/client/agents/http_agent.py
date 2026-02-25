@@ -214,12 +214,26 @@ class HTTPAgent(AgentClient):
                     message = resp["choices"][0].get("message", {})
                     content = message.get("content", "")
                     # extract reasoning_content
-                    reasoning = message.get("reasoning_content", "")
+                    # support both possible fields
+                    reasoning = (
+                        message.get("thinking")
+                        or message.get("reasoning_content")
+                        or ""
+                    )
 
                     # print("\n=== CONTENUTO PRINCIPALE ===")
                     # print(content)
                     # print("\n=== REASONING ===")
                     # print(reasoning)
+                    
+                    # fallback: extract <think> if thinking field empty (se non supporta thinking separation si estrae
+                    # la CoT dai tags)
+                    if not reasoning and "<think>" in content:
+                        import re
+                        match = re.search(r"<think>(.*?)</think>", content, re.DOTALL)
+                        if match:
+                            reasoning = match.group(1).strip()
+                            content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
                     return{
                         "content": content,
