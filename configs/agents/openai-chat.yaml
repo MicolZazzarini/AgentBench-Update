@@ -1,3 +1,23 @@
+# ============================================================
+# HTTPAgent configuration for OpenAI Chat Completions API
+# ------------------------------------------------------------
+# This agent connects to OpenAI's official cloud-hosted
+# Chat Completions endpoint.
+#
+# Endpoint:
+#   https://api.openai.com/v1/chat/completions
+#
+# Key characteristics:
+# - Remote inference (OpenAI-managed infrastructure)
+# - Requires a valid OpenAI API key
+# - Standard Chat Completions JSON schema
+# - Deterministic generation enforced via temperature = 0
+#
+# Make sure to replace:
+#   <% PUT-YOUR-OPENAI-KEY-HERE %>
+# with a valid API key before running experiments.
+# ============================================================
+
 module: src.client.agents.HTTPAgent
 parameters:
   url: https://api.openai.com/v1/chat/completions

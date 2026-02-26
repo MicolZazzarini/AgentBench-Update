@@ -1,3 +1,13 @@
+# ============================================================
+# OSInteraction Task Definitions
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# Development task
+# ------------------------------------------------------------
+# os-dev is intended for testing and small-scale runs.
+# Uses a small dataset and limited scripts to quickly debug
+# workflows without heavy resource consumption.
 os-dev:
   module: "src.server.tasks.os_interaction.OSInteraction"
   parameters:
@@ -21,6 +31,12 @@ os-dev:
       bk: [ ]
       ignore: [ ]
 
+# ------------------------------------------------------------
+# Standard (production) task
+# ------------------------------------------------------------
+# os-std is the main benchmarking task.
+# Uses multiple datasets and script directories for
+# large-scale evaluation.
 os-std:
   module: "src.server.tasks.os_interaction.OSInteraction"
   parameters:

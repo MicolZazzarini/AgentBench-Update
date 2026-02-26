@@ -1,3 +1,8 @@
+# ============================================================
+# Agent model configurations for AgentBench
+# Each entry defines a model endpoint and its runtime parameters.
+# ============================================================
+
 gpt-4o-mini:
     import: "./openai-chat.yaml"
     parameters:
@@ -22,6 +27,18 @@ text-davinci-002:
             model: "text-davinci-002"
             max_tokens: 512
 
+# ============================================================
+# Qwen model served via Alibaba Cloud API
+# ------------------------------------------------------------
+# This configuration uses the official Qwen endpoint exposed
+# through Alibaba Cloud infrastructure.
+# The model is accessed remotely via API (cloud-hosted),
+# and requires proper authentication credentials.
+#
+# Model: qwen3-vl-30b-a3b-thinking
+# Deployment type: Remote (API-based)
+# Provider: Alibaba Cloud
+# ============================================================
 qwen3-chat:
     import: "./qwen-chat.yaml"
     parameters:
@@ -30,6 +47,22 @@ qwen3-chat:
             model: "qwen3-vl-30b-a3b-thinking"
             max_tokens: 512
 
+# ============================================================
+# Qwen 14B model served locally via Ollama
+# ------------------------------------------------------------
+# This configuration uses a locally hosted Qwen model
+# running through Ollama.
+#
+# Unlike the Alibaba Cloud version above, this model:
+# - Runs entirely on local hardware
+# - Does NOT rely on external API calls
+# - Is served through the Ollama runtime
+# - Requires the model to be downloaded locally beforehand
+#
+# Model: qwen3:14b
+# Deployment type: Local (Ollama runtime)
+# Provider: Local inference (no cloud dependency)
+# ============================================================
 qwen3-14b-ollama:
   import: "./ollama-qwen.yaml"
   parameters:
@@ -41,10 +74,4 @@ qwen3-14b-ollama:
       think: true
       stream: false
 
-qwen3-8b-Thinking-ollama:
-  import: "./ollama-qwen.yaml"
-  parameters:
-    name: "Willem27/Qwen3-VL-8B-Thinking:latest"
-    body:
-        model: "Willem27/Qwen3-VL-8B-Thinking:latest"
-        max_tokens: 512
+

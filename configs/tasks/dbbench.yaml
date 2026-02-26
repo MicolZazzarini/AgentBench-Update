@@ -1,14 +1,37 @@
+# ============================================================
+# DBBench Task Definitions
+# ------------------------------------------------------------
+# This file defines DBBench tasks used for benchmarking
+# LLMs in database-related tasks.
+# ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# Default task settings
+# ------------------------------------------------------------
+# Acts as a base configuration for DBBench tasks.
+# If a task does not specify its own module or parameters,
+# these defaults are applied.
 default:
   module: src.server.tasks.dbbench.DBBench
   parameters:
     concurrency: 1
     max_round: 15
 
+# ------------------------------------------------------------
+# Development dataset task
+# ------------------------------------------------------------
+# dbbench-dev is used for testing, small-scale runs,
+# or quick debugging.
 dbbench-dev:
   parameters:
     name: dbbench-dev
     data_file: "data/dbbench/dev.jsonl"
 
+# ------------------------------------------------------------
+# Standard dataset task
+# ------------------------------------------------------------
+# dbbench-std is the main benchmarking dataset for production
+# or evaluation experiments.
 dbbench-std:
   module: src.server.tasks.dbbench.DBBench
   parameters:

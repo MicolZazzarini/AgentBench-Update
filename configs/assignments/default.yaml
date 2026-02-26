@@ -1,21 +1,63 @@
+# ============================================================
+# Experiment Configuration File
+# ------------------------------------------------------------
+# This file defines:
+# - Task and agent concurrency limits
+# - Agent-to-task assignments
+# - Output directory structure
+#
+# It extends the base configuration defined in:
+#   definition.yaml
+# ============================================================
+
+# Base experiment definitions (tasks, agents, datasets, etc.)
 import: definition.yaml
+
+
+# ------------------------------------------------------------
+# Concurrency settings
+# ------------------------------------------------------------
+# Controls the maximum number of parallel executions.
+#
+# - task:  Maximum number of concurrent task instances
+#          per task type.
+# - agent: Maximum number of concurrent inference calls
+#          per agent (important for resource-constrained setups,
+#          e.g., local GPU inference with Ollama).
+#
+# These limits prevent resource exhaustion and allow
+# controlled benchmarking.
 
 concurrency:
   task:
+    # Up to 5 concurrent DBBench task instances
     dbbench-std: 5
-    # os-std: 5
+
+    # Up to 5 concurrent OS task instances
+    os-std: 5
+
   agent:
-    #qwen3-chat: 5
-    #qwen3-ollama: 5
+    # Up to 5 parallel inference calls using the
+    # locally hosted qwen3-14b model via Ollama.
+    # Adjust based on available GPU/CPU resources.
     qwen3-14b-ollama: 5
+
+
+# ------------------------------------------------------------
+# Agent-to-task assignments
+# ------------------------------------------------------------
+# Defines which agents are evaluated on which tasks.
+#
+# In this configuration:
+# - The local qwen3-14b-ollama model is evaluated on:
+#     • dbbench-std
+#     • os-std
 
 assignments: 
   - agent: 
-      #- qwen3-chat
-      #- qwen3-ollama
       qwen3-14b-ollama
     task:
       - dbbench-std
-      #- os-std
+      - os-std
 
 output: "outputs/{TIMESTAMP}"

@@ -1,13 +1,41 @@
+# ============================================================
+# HTTPAgent configuration for locally hosted Ollama models
+# ------------------------------------------------------------
+# This agent communicates with a locally running Ollama server
+# through its native REST API.
+#
+# Endpoint:
+#   http://127.0.0.1:11434/api/chat
+#
+# Key characteristics:
+# - Local inference (no external cloud dependency)
+# - Uses Ollama's native /api/chat interface
+# - Requires Ollama daemon running on the host machine
+# - Model must be available locally (e.g., pulled via `ollama pull`)
+# ============================================================
 module: src.client.agents.HTTPAgent
 parameters:
-  url: http://127.0.0.1:11434/api/chat   # 🔴 endpoint nativo Ollama
+  # Local Ollama chat endpoint (default port 11434)
+  url: http://127.0.0.1:11434/api/chat  
   headers:
     Content-Type: application/json
   body:
+    # Disable token streaming; response returned as a single payload
     stream: false
+
+    # Enables reasoning mode for models that support explicit
+    # chain-of-thought separation (e.g., Qwen "thinking" variants).
+    #
+    # When set to true:
+    # - The model's internal reasoning trace is returned separately
+    #   in the `message.thinking` field.
+    # - The final user-facing answer is stored in `message.content`.
     think: true
   prompter:
+    # Formats messages using a role/content dictionary structure
+    # compatible with chat-based LLM APIs
     name: role_content_dict
     args:
       agent_role: assistant
+  # Extracts only the "response" field from the Ollama JSON output
   return_format: "{response}"

@@ -1,3 +1,24 @@
+# ============================================================
+# HTTPAgent configuration for Alibaba Cloud DashScope API
+# (OpenAI-compatible mode)
+# ------------------------------------------------------------
+# This agent connects to Alibaba Cloud's DashScope endpoint
+# using its OpenAI-compatible interface:
+#
+#   https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions
+#
+# Key characteristics:
+# - Remote inference (Alibaba Cloud infrastructure)
+# - OpenAI-compatible request/response schema
+# - Requires a valid API key
+# - Supports optional reasoning trace exposure
+#
+# IMPORTANT:
+# Although the API mimics OpenAI's schema, it is served
+# by Alibaba Cloud and may include vendor-specific fields
+# (e.g., reasoning content).
+# ============================================================
+
 module: src.client.agents.HTTPAgent
 parameters:
   url: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
@@ -6,7 +27,23 @@ parameters:
     Authorization: Bearer KEY
   body:
     temperature: 0
-    enable_thinking: true # added to save reasoning_content
+
+    # Enables explicit reasoning trace generation.
+    #
+    # When enabled:
+    # - The model may return an additional field containing
+    #   structured reasoning (often exposed as
+    #   `message.reasoning_content` or similar).
+    # - The final user-facing answer remains in:
+    #     response["choices"][0]["message"]["content"]
+    #
+    # This allows separation between:
+    #   - Final answer (evaluation target)
+    #   - Internal reasoning trace (analysis/logging)
+    #
+    # Note: This is a vendor-specific extension and is
+    # not part of the standard OpenAI API specification.
+    enable_thinking: true 
   prompter:
     name: role_content_dict
     args:

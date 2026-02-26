@@ -1,3 +1,19 @@
+# ============================================================
+# HTTPAgent configuration for OpenAI Legacy Completions API
+# ------------------------------------------------------------
+# This agent connects to OpenAI's legacy text completion
+# endpoint:
+#
+#   https://api.openai.com/v1/completions
+#
+# Unlike the Chat Completions API, this endpoint:
+# - Accepts a single prompt string (not role-based messages)
+# - Returns raw text completions
+# - Does NOT use structured chat message objects
+#
+# This configuration is typically used for older
+# instruct-style models (e.g., text-davinci-002/003).
+
 module: src.client.agents.HTTPAgent
 parameters:
   name: <% NAME %>

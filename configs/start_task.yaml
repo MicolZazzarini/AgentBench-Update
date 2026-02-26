@@ -1,6 +1,14 @@
+# ============================================================
+# Experiment Run Configuration
+# ------------------------------------------------------------
+# This file defines which tasks should be started when
+# launching an AgentBench experiment and how many parallel
+# instances to run.
+# ============================================================
+
 definition:
   import: tasks/task_assembly.yaml
 
 start:
   dbbench-std: 5
-  #os-std: 5
+  os-std: 5

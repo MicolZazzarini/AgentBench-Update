@@ -7,10 +7,20 @@ from src.typings import *
 from src.utils import *
 from ..agent import AgentClient
 
-
 old_merge_environment_settings = requests.Session.merge_environment_settings
 
-
+# ============================================================
+# Context Manager: no_ssl_verification
+# ------------------------------------------------------------
+# Temporarily disables SSL verification for requests.
+# Useful when connecting to local endpoints or self-signed
+# certificates.
+#
+# Features:
+# - Overrides merge_environment_settings to force verify=False
+# - Suppresses InsecureRequestWarning
+# - Cleans up adapters after use
+# ============================================================
 @contextlib.contextmanager
 def no_ssl_verification():
     opened_adapters = set()
@@ -35,7 +45,15 @@ def no_ssl_verification():
             except:
                 pass
 
-
+# ============================================================
+# Prompter class
+# ------------------------------------------------------------
+# Responsible for formatting messages before sending them
+# to the LLM.
+# Provides:
+# - Default prompt formatting
+# - Role-based message dictionaries (user/agent)
+# ============================================================
 class Prompter:
     @staticmethod
     def get_prompter(prompter: Union[Dict[str, Any], None]):
@@ -61,7 +79,11 @@ class Prompter:
         content_key: str = "content",
         user_role: str = "user",
         agent_role: str = "assistant",
-    ):
+    ):  
+        """
+        Formats messages into a role/content dictionary structure
+        compatible with chat-based LLM APIs.
+        """
         def prompter(messages: List[Dict[str, str]]):
             role_dict = {
                 "user": user_role,
@@ -76,7 +98,12 @@ class Prompter:
 
         return prompter
 
-
+# ============================================================
+# Context limit checker
+# ------------------------------------------------------------
+# Detects whether a response indicates that the model
+# exceeded its context or token limit.
+# ============================================================
 def check_context_limit(content: str):
     content = content.lower()
     and_words = [
@@ -91,7 +118,18 @@ def check_context_limit(content: str):
     )
     return rule.check(content)
 
-
+# ============================================================
+# HTTPAgent class
+# ------------------------------------------------------------
+# Client for interacting with LLMs via HTTP endpoints.
+# Supports:
+# - OpenAI-compatible chat/completions
+# - Ollama native /api/chat endpoints
+# - Automatic prompter handling and history formatting
+# - SSL verification bypass for local endpoints
+# - Context-limit detection
+# - Reasoning content extraction
+# ============================================================
 class HTTPAgent(AgentClient):
     def __init__(
         self,
@@ -113,11 +151,18 @@ class HTTPAgent(AgentClient):
 
         if not self.url:
             raise Exception("Please set 'url' parameter")
-
+    
+    # Handle conversation history
     def _handle_history(self, history: List[dict]) -> Dict[str, Any]:
         return self.prompter(history)
-
+    
+    # Main inference function
     def inference(self, history: List[dict]) -> Dict[str, str]:
+        """
+        Sends the conversation history to the LLM endpoint and
+        returns the model's response along with any reasoning trace.
+        Retries up to 3 times on failure.
+        """
         for attempt in range(3):
             try:
                 body = self.body.copy()
@@ -146,7 +191,8 @@ class HTTPAgent(AgentClient):
                 print("Warning:", e)
                 time.sleep(attempt + 2)
                 continue
-
+            
+            # Parse JSON response
             resp = resp.json()
 
             # ---------------------------------------------------
