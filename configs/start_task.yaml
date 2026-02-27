@@ -11,4 +11,4 @@ definition:
 
 start:
   dbbench-std: 5
-  os-std: 5
+  #os-std: 5

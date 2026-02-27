@@ -34,7 +34,7 @@ concurrency:
     dbbench-std: 5
 
     # Up to 5 concurrent OS task instances
-    os-std: 5
+    #os-std: 5
 
   agent:
     # Up to 5 parallel inference calls using the
@@ -58,6 +58,6 @@ assignments:
       qwen3-14b-ollama
     task:
       - dbbench-std
-      - os-std
+      #- os-std
 
 output: "outputs/{TIMESTAMP}"
