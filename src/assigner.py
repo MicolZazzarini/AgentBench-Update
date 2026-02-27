@@ -48,13 +48,13 @@ class Assigner:
         self.tqdm_ordered_by_agent = {}
         self.overall_tqdm = None
         self.config = config
-        self.free_worker = config.concurrency.copy(deep=True) # limiti di concorrenza
-        self.agents: Dict[str, AgentClient] = {} # agenti creati
+        self.free_worker = config.concurrency.copy(deep=True) 
+        self.agents: Dict[str, AgentClient] = {} 
         self.tasks: Dict[str, TaskClient] = {} # tasks
-        self.task_indices: Dict[str, List[SampleIndex]] = {} # lista sample per task
+        self.task_indices: Dict[str, List[SampleIndex]] = {} 
         self.task_worker_fail_count: Dict[str, int] = {}
         self.assignment_lock = threading.Lock()
-        self.remaining_tasks: Dict[ # cosa manca da eseguire
+        self.remaining_tasks: Dict[ 
             str, Dict[str, List[int]]
         ] = {}  # {agent: {task: [index]}}
         self.completions: Dict[
@@ -74,15 +74,6 @@ class Assigner:
 
         # Step 2. walk through all the folders in output folder({output}/agent/task/runs.jsonl),
         # and remove the finished samples
-        """
-        Per ogni combinazione agent-tasks:
-        1) Se esiste overall.json -> task completo - skip
-        2) se esiste runs.jsonl:
-              - rilegge tutte le esecuzioni
-              - rimuove gli indici già completati
-              - ripristina lo stato
-        Questo permette di riprendere gli esperimenti interrotti
-        """
         for assignment in self.config.assignments:
             agent = assignment.agent
             task = assignment.task
@@ -157,22 +148,16 @@ class Assigner:
                 )
 
         # Create agents
-        # ogni agente viene istanziato dinamicamente
         for agent in self.remaining_tasks:
             self.agents[agent] = self.config.definition.agent[agent].create()
 
     def get_output_dir(self, agent: str, task: str) -> str:
         return os.path.join(self.config.output, agent, task)
     
-    # cuore dello scheduling, funzionaa loop continuo
     def worker_generator(
         self, interval=10
     ) -> Iterator[Tuple[str, str, SampleIndex]]:
         
-        # Costruzione di un grafo SRC -> agent -> task -> DST con capacità:
-        # - SRC: agent-capacità agente
-        # agent -> task = numero sample rimanenti
-        # task -> DST = capacità task
         node_list = ["SRC", "DST"]
         agent_node_index = {}
         task_node_index = {}
@@ -215,7 +200,6 @@ class Assigner:
                     continue
 
             # Step 2. Create graph and calculate max flow
-            # usa algoritmo max flow: trova assegnazione ottimale che rispetta i vincoli e massimizza il parallelismo
             graph = Graph(node_count=len(node_list), edges=edges)
             max_flow = MaxFlow(graph, src=0, dst=1)
 
@@ -247,15 +231,6 @@ class Assigner:
             time.sleep(interval / 2 + random.random() * interval)
 
     def start(self, tqdm_out=None):
-        """
-        Avvia tutto.
-        1) Conta sample totali
-        2) Crea progress bar globale
-        3) Crea progress bar per agente
-        4) Consuma generator
-        5) per ogni assegnazione -> avvia thread
-        Alla fine stampa riepilogo
-        """
         self.started_count = sum(
             [
                 len(self.remaining_tasks[agent][task])

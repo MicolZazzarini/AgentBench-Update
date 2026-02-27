@@ -7,7 +7,6 @@ import socket
 import struct
 import time
 from typing import List, Dict, Any, Tuple
-
 import docker
 import docker.models.containers
 
@@ -21,7 +20,22 @@ from src.typings import (
 
 
 class Container:
+    """
+    Persistent interactive Docker container wrapper.
+
+    This class creates a long-lived container running an interactive
+    bash session and exposes a low-level socket interface allowing
+    incremental command execution.
+
+    The container behaves like a real OS terminal used by the agent
+    during task interaction.
+    """
+
     def __init__(self, image):
+        """
+        Start a detached container and initialize a persistent
+        interactive bash execution session.
+        """
         self.image = image
         self.client = docker.from_env()
         self.container: docker.models.containers.Container = self.client.containers.run(
@@ -33,15 +47,15 @@ class Container:
             labels={"created_by": "os-pipeline"},
         )
 
-        # Creazione dell'esecuzione bash persistente (sessione bash interattiva dentro il container)
+        # Create persistent bash exec session
         self.exec_id = self.client.api.exec_create(
             self.container.id, "bash --login", stdin=True, tty=True
         )["Id"]
 
-        # Avvio dell'esecuzione con socket 
+        # Open socket connected to bash session
         sock_obj = self.client.api.exec_start(self.exec_id, socket=True)
 
-        # Compatibilità Linux vs Windows
+        # Cross-platform compatibility (Linux / Windows)
         if hasattr(sock_obj, "_sock"):
             # Linux
             self.sock = sock_obj._sock
@@ -58,20 +72,29 @@ class Container:
             pass
 
     def __del__(self):
+        """Ensure container termination on destruction."""
         try:
             self.container.stop()
         except:
             pass
 
-    # Wrapper recv per uniformare Linux/Windows
     def recv(self, n=4096):
+        """Receive raw bytes from container socket."""
         return self.sock.recv(n)
 
-    # Wrapper send per uniformare Linux/Windows
     def send(self, data):
+        """Send raw bytes to container socket."""
         self.sock.send(data)
 
     def execute(self, command: str):
+        """
+        Execute a command inside the persistent bash session.
+
+        Returns:
+            DummyOutput:
+                output (bytes): command stdout/stderr
+                exit_code (int)
+        """
         class DummyOutput:
             output: bytes
             exit_code: int
@@ -82,8 +105,9 @@ class Container:
 
         if not isinstance(command, str):
             return DummyOutput(-1, b"")
-
-        self.send(command.encode("utf-8") + b"\n") # invia comando a bash
+        
+        # Send command to interactive shell
+        self.send(command.encode("utf-8") + b"\n") 
         # ignore input line
         try:
             data = self.recv(8)
@@ -95,7 +119,9 @@ class Container:
         time_limit = 30  # seconds
         start_time = time.time()
         output = b""
-        while True: # loop di lettura output
+
+        # Read shell output until prompt reappears
+        while True: 
             if time.time() - start_time > time_limit:
                 break
             try:
@@ -110,7 +136,7 @@ class Container:
             except (TimeoutError, socket.timeout):
                 break
 
-        # Pulizia output da escape sequence
+        # Remove ANSI escape sequences
         output = re.sub(b"\x1b.+@.+[#|$] ", b'', output)
         output = re.sub(b'\x1b\\[[0-9;]*[a-zA-Z]', b'', output)
         output = re.sub(b'\x1b\\][0-9]*;[^\x07]*\x07', b'', output)
@@ -145,6 +171,15 @@ class Container:
 
 
 class JudgeConfig:
+    """
+    Configuration describing a single OS interaction task.
+
+    Defines:
+    - container image
+    - initialization scripts
+    - evaluation strategy
+    - validation rules
+    """
     image: str = None
     init_script: List[Tuple[str, str]] = None
     start: Tuple[str, str] = None
@@ -153,17 +188,18 @@ class JudgeConfig:
     match: dict = None
     example_script: str = None
     
-    # Due modalità di valutazione: confronto diretto risposta o script di verifica
     def get_evaluation_type(self):
+        """Return evaluation mode: 'check' or 'match'."""
         if self.check:
             return "check"
         elif self.match:
             return "match"
 
     def get_evaluation_content(self):
+        """Return evaluation configuration."""
         return self.check or self.match
 
-# esempio few shot per formato azioni
+# few shot example
 ONE_SHOT = [
     {"role": "user", "content": 'tell me how many files are in the directory "/etc"?'},
     {
@@ -200,26 +236,33 @@ Act: answer(220)""",
     },
 ]
 
-# task vero e proprio
+# task 
 class OSInteraction(Task):
     
     def _load_configs(self, config_path, script_root_dir=".") -> List[JudgeConfig]:
         """
-        Questo metodo:
-        1) legge un file .json o .jsonl
-        2) converte il contenuto in oggetti JudgeConfig
-        3) Restituisce una lista di configurazioni di problemi
-        Quindi, trasforma un file di configurazione in oggetti python pronti per essere usati dal giudice
+        Load task definitions from JSON or JSONL configuration files.
+
+        The method:
+            1. Parses configuration files
+            2. Normalizes script definitions
+            3. Converts entries into JudgeConfig objects
+
+        Returns:
+            List[JudgeConfig]
         """
         def load_script(script_obj):
             """
-            Questa funzione serve a normalizzare uno script. Uno script JSON può essere scritto in 3 modi:
-            - se non esiste -> restituisce None
-            - se lo script è una stringa, di default il lingaggio è bash
-            - se lo script è un dizionario si determina in linguaggio (di default bash)
-            - se script è in un file, lo carica da script root dir e restituisce (language, contenuto file)
-            - se lo scirpt è inline rstituisce il codice direttamente
-            - se non è valido errore
+            Normalize script specification.
+
+            Supported formats:
+                - None
+                - inline string (defaults to bash)
+                - {language, code}
+                - {language, file}
+
+            Returns:
+                Tuple[str, str]: (language, script_content)
             """
             if script_obj is None:
                 return None
@@ -240,35 +283,28 @@ class OSInteraction(Task):
                 raise ValueError("Invalid Script Object")
 
         # 1. handle input file:
-        # Fase 1-caricamento file JSON
         if config_path.endswith(".json"):
             with open(config_path, encoding="utf-8") as f:
                 config_raw = json.load(f)
-                """
-                Il file può essere:
-                - Lista di problemi 
-                - Singolo problema
-                """
             if isinstance(config_raw, list):
                 pass
             elif isinstance(config_raw, dict):
-                config_raw = [config_raw] # se è un singolo dict -> lo trasforma in lista
+                config_raw = [config_raw] 
             else:
                 raise ValueError("Invalid Config File")
         elif config_path.endswith(".jsonl"):
             with open(config_path, encoding="utf-8") as f:
-                config_raw = [json.loads(line) for line in f.readlines()] # se è un jsonl un json per riga
+                config_raw = [json.loads(line) for line in f.readlines()] 
         else:
             raise ValueError("Invalid Config File")
 
         # 2. handle configs
-        # fase 2-Creazione JudgeConfig
         configs: list[JudgeConfig] = []
         for item in config_raw:
             config = JudgeConfig()
-            config.description = item["description"] # ogni problema ha una descrizione
-            if "create" in item: # se c'è un "create", definisce container e init
-                config.image = ( # s enon specificata, usa immagine di default
+            config.description = item["description"] # description of the task
+            if "create" in item: 
+                config.image = ( 
                     item["create"]["image"]
                     if ("image" in item["create"])
                     else (self.docker_config["localhost"] + "/default")
@@ -284,17 +320,17 @@ class OSInteraction(Task):
                 else:
                     config.init_script = []
             else:
-                config.image = self.docker_config["localhost"] + "/default" # se create non esiste, usa immagine di default
+                config.image = self.docker_config["localhost"] + "/default" 
             if "start" in item:
-                config.start = load_script(item["start"]) # script eseguito prima che inizi l'interazione
-            evaluation = item["evaluation"] # ogni problema ha una sezione evaluation
+                config.start = load_script(item["start"]) 
+            evaluation = item["evaluation"] 
             if "match" in evaluation:
-                if type(evaluation["match"]) is str: # caso 1: match
+                if type(evaluation["match"]) is str: # case 1: match
                     config.match = {"answer": evaluation["match"], "strip": True}
                 else:
                     config.match = evaluation["match"]
             elif "check" in evaluation:
-                if type(evaluation["check"]) is not list: # caso 2: check (qui la risposta viene verificata tramite script)
+                if type(evaluation["check"]) is not list: # case 2: check (verification through script)
                     config.check = [load_script(evaluation["check"])]
                 else:
                     config.check = [
@@ -303,19 +339,25 @@ class OSInteraction(Task):
             else:
                 raise ValueError("check or match must exist.")
             if "check" in evaluation and "example" in evaluation:
-                config.example_script = load_script(evaluation["example"]) # serve come script di esempio (fallback)
+                config.example_script = load_script(evaluation["example"]) 
             configs.append(config)
         return configs # ritorna la lista
 
     def __init__(self, data_config, docker_config, round_limit=8, **kwargs):
         """
-        Qui viene costruita tutta la mappa dei problemi che il sistema può eseguire:
-        1) Riceve configurazioni generali
-        2) espande wildcard dei file problema (usando glob)
-        3) carica ogni file .json/.jsonl
-        4) genera un indice univoco per ogni problema
-        5) costruisce self.problem_config
-        Quindi prepara tutti i problemi del benchmark
+        Initialize the OSInteraction benchmark.
+
+        This constructor prepares the full registry of executable problems.
+
+        Workflow:
+            1. Load global benchmark configuration.
+            2. Expand problem file wildcards using glob patterns.
+            3. Load all JSON / JSONL problem definitions.
+            4. Assign a unique index to each problem instance.
+            5. Build the internal problem configuration mapping.
+
+        The resulting `self.problem_configs` dictionary maps a unique
+        sample index to its corresponding execution configuration.
         """
         super().__init__(**kwargs)
         self.round_limit: int = round_limit
@@ -355,7 +397,8 @@ class OSInteraction(Task):
 
     def calculate_overall(self, results: List[TaskOutput]) -> Dict[str, Any]:
         """
-        Questo metodo calcola le metriche aggregate finali dopo aver eseguito più task (statistiche globali)"""
+        Compute aggregated evaluation metrics across multiple executed tasks.
+        """
         overall = {
             "total": len([config for config in results if config]),
             "pass": len(
@@ -377,12 +420,12 @@ class OSInteraction(Task):
 
     def extract_action(self, raw: str):
         """
-        E' il parser che trasforma l'output testuale dell'agente in un'azione eseguibile dal sistema.
-        Dato l'output completo dell'agente (raw), la funzione:
-        1) Estrae il "Think"
-        2) Estrae l'ultima azione valida (bash, finish, answer)
-        3) Estrae eventuale contenuto (codice bash o risposta finale)
-        4) restituisce un dizionario strutturato
+        This is the parser that transforms the agent's textual output into an action
+        executable by the system. Given the full agent output (raw), the function:
+        1) Extracts the "Think" section
+        2) Extracts the last valid action (bash, finish, answer)
+        3) Extracts any associated content (bash code or final answer)
+        4) Returns a structured dictionary
         """
         think_pattern = r"Think:\s*(.+)"
         act_pattern = r"Act:\s*(.+)"
@@ -424,57 +467,63 @@ class OSInteraction(Task):
             ret["content"] = content
         
         """
-        esempio output (ret):
-        
-        caso bash
-        
+        Example output (ret):
+
+        Bash case:
+
         {
-        "thought": "devo contare i file",
+        "thought": "I need to count the files",
         "action": "bash",
         "content": "ls -1 /etc | wc -l"
         }
 
-        caso answer
+        Answer case:
 
         {
-        "thought": "ora ho il risultato",
+        "thought": "Now I have the result",
         "action": "commit",
         "content": "220"
         }
 
-        PROBLEMI POTENZIALI:
-        - Regex fragile: non cattura multilinea
-        - La regex bash è rigida, richiede esattamente un certo formato e se l'agente scrive bash diversamente non funziona
-        - il parsing della answer è fragile 
-        Questo è importante perchè nel metodo _judge_ viene fatto root = self.extract_action(root.content), e se il parsing fallisce, il task fallisce
+        POTENTIAL ISSUES:
+        - Fragile regex: does not capture multiline output
+        - The bash regex is strict, requires an exact format, and fails if the agent writes bash differently
+        - The answer parsing is fragile
+        This is important because in the _judge_ method we do root = self.extract_action(root.content),
+        and if parsing fails, the task fails.
         """
         return ret
     
 
-    # Nei risultati, i casi possibili sono i seguenti:
+    # Possible outcomes for task execution:
     #
-    # 1) status = completed:
-    #       - result = true -> Il task è stato completato correttamente e la risposta dell'agente è corretta
-    #       - result = false -> Il task è stato completato (l'agente ha prodotto un output finale), ma la risposta è sbagliata rispetto
-    #                           alla ground truth
-    # 
-    # 2) status = agent_context_limit, result = false -> L'agente ha raggiunto il limite di contesto (numero massimo di token/messaggi)
-    #                                                    e non ha potuto completare il task
+    # 1) status = COMPLETED:
+    #       - result = True  -> The task was completed successfully, and the agent's answer is correct
+    #       - result = False -> The task was completed (the agent produced a final output),
+    #                          but the answer is incorrect compared to the ground truth
     #
-    # 3) status = task_limit_reached, result = false -> L'agente ha superato il numero massimo di round consentiti senza produrre una risposta
-    #                                                   finale
+    # 2) status = AGENT_CONTEXT_LIMIT, result = False -> The agent reached the context limit
+    #                                                     (max tokens/messages) and couldn't complete the task
     #
-    # 4) status = agent_validation_failed, result = false -> L'agente non ha prodotto un'azione valida
+    # 3) status = TASK_LIMIT_REACHED, result = False -> The agent exceeded the maximum allowed rounds
+    #                                                   without producing a final answer
     #
-    # 5) status = agent_invalid_action, result = false -> L'agente ha prodotto un'azione non prevista
+    # 4) status = AGENT_VALIDATION_FAILED, result = False -> The agent did not produce a valid action
     #
-    # 6) status = unknown, result = false -> Errore generico durante l'esecuzione
+    # 5) status = AGENT_INVALID_ACTION, result = False -> The agent produced an unexpected action
+    #
+    # 6) status = UNKNOWN, result = False -> Generic error during execution
     async def start_sample(self, index, session: Session) -> TaskSampleExecutionResult:
         """
-        Ponte d'ingresso dell'esecuzione di unsingolo problema.
-        - index è la chiave univoca del problema
-        - session è un oggetto che gestisce la conversazione con l'agente
-        ritorna TaskSampleExecutionresult che contiene status e result (dict con info)"""
+        Entry point for executing a single task/sample.
+        
+        Parameters:
+        - index: unique key for the task
+        - session: object managing the conversation with the agent
+        
+        Returns:
+        - TaskSampleExecutionResult containing the status and result (dictionary with details)
+        """
         data_item = self.problem_configs[index]
         config = data_item["config"]
         file = data_item["file"]
@@ -484,7 +533,6 @@ class OSInteraction(Task):
             container = Container(config.image)
             print("init container ok")
             print("start judge")
-            # chiama il metodo judge che inietta il prompt, interagisce con l'agente, esegue comandi e valuta la risposta finale
             result = await self._judge(session, config, container) 
             result.result["file"] = file
             result.result["index_in_file"] = index_in_file
@@ -493,7 +541,6 @@ class OSInteraction(Task):
         except Exception as _:
             print("err")
             import traceback
-            # se c'è qualche errore durante l'esecuzione STATUS = UNKNOWN e result: false
             return TaskSampleExecutionResult(
                 status=SampleStatus.UNKNOWN,
                 result={"result": False, "error": traceback.format_exc()},
@@ -508,11 +555,14 @@ class OSInteraction(Task):
         self, session: Session, config: JudgeConfig, container: Container
     ) -> TaskSampleExecutionResult:
         """
-        Prepara l'OS
-        guida l'agente
-        esegue comandi
-        valida la risposta
-        decide se il task è corretto
+        Core logic for executing and evaluating a single task.
+        
+        Steps:
+        1) Prepare the OS environment
+        2) Guide the agent through the task
+        3) Execute commands in the container
+        4) Validate the agent's response
+        5) Determine if the task was completed successfully
         """
         print("exec start")
         if config.init_script:
@@ -520,24 +570,24 @@ class OSInteraction(Task):
                 init = await asyncio.to_thread(container.execute_independent, script)
                 if init.exit_code != 0:
                     return TaskSampleExecutionResult(
-                        status=SampleStatus.UNKNOWN, # se c'è qualche errore nell'avvio stop immediato e STATUS = UNKNOWN e Result = false
+                        status=SampleStatus.UNKNOWN, 
                         result={"result": False, "error": f'Init script {script} failed: {init}'}
                     )
         if config.start:
             start = await asyncio.to_thread(container.execute, config.start[1])
             if start.exit_code != 0:
                 return TaskSampleExecutionResult(
-                    status=SampleStatus.UNKNOWN, # idem sopra
+                    status=SampleStatus.UNKNOWN, 
                     result={"result": False, "error": f'Start script {config.start} failed: {start}'}
                 )
         print("exec start ok")
         
-        # inziezione prompt di sistema
         """
-        L'agente deve:
-        1) scrivere Think
-        2) Poi scegliere una sola azione: bash, finish, answer
-        ReAct framework controllato
+        System prompt injection. The agent must:
+        1) Write a "Think" section
+        2) Choose exactly one action per turn: "bash", "finish", or "answer"
+        
+        Controlled ReAct framework
         """
         oneshot = True
         session.inject(
@@ -580,7 +630,7 @@ If the output is too long, I will truncate it. The truncated output is not compl
                 "Now, my problem is:\n\n" + ONE_SHOT[0]["content"]
             )
             for item in ONE_SHOT[1:]:
-                session.inject(item) # serve a mostrare un esempio di Think, Ac, bash, Output, Answer, e poi si avvio il nuovo problema reale
+                session.inject(item) 
             session.inject(
                 {
                     "role": "user",
@@ -589,9 +639,9 @@ If the output is too long, I will truncate it. The truncated output is not compl
                 }
             )
         
-        # loop di interazione agente -OS (round limit di default 8)
+        # Agent-OS interaction loop (default round limit = 8)
         for _ in range(self.round_limit):
-            root = await session.action() # chiamata agente
+            root = await session.action() # call agent
 
             print("\n=== RAW AGENT OUTPUT ===")
             print(root.content)
@@ -600,34 +650,33 @@ If the output is too long, I will truncate it. The truncated output is not compl
             print("\n=== REASONING CONTENT ===")
             print(root.reasoning_content)
             print("========================\n")
-
-            if root.status == AgentOutputStatus.AGENT_CONTEXT_LIMIT: # se supera token limit -> ritorna errore dedicato
+            
+            # Handle agent exceeding context limit
+            if root.status == AgentOutputStatus.AGENT_CONTEXT_LIMIT: 
                 return TaskSampleExecutionResult(
                     status=SampleStatus.AGENT_CONTEXT_LIMIT, result={"result": False}
                 )
-            if root.status != AgentOutputStatus.NORMAL: # se non è status normal ritorna errore generico
+            # Any non-normal status triggers a generic error
+            if root.status != AgentOutputStatus.NORMAL: 
                 return TaskSampleExecutionResult(
                     status=SampleStatus.UNKNOWN, result={"result": False}
                 )
-            root = self.extract_action(root.content) # parsing dell'azione
+            
+            # Parse the agent output into a structured action
+            root = self.extract_action(root.content) 
 
             print("\n=== PARSED ACTION ===")
             print(root)
             print("=====================\n")
 
-            """
-            Converte testo LLM in:
-            {
-             "thought": "...",
-             "action": "bash" | "commit",
-             "content": ...
-            }"""
+            # Ensure parsed action contains valid keys
             if "action" not in root:
                 return TaskSampleExecutionResult(
                     status=SampleStatus.AGENT_VALIDATION_FAILED,
                     result={"result": False},
                 )
-            if root["action"] not in ["bash", "commit"]:# se LLM sbaglia formato -> invalid action
+            # Ensure the action is valid
+            if root["action"] not in ["bash", "commit"]:
                 print("INVALID ACTION DETECTED")
                 print("Action value:", root["action"])
                 print("Full parsed root:", root)
@@ -637,17 +686,17 @@ If the output is too long, I will truncate it. The truncated output is not compl
 
             action = root["action"]
             content = root["content"]
-            if action == "commit": # se l'azione è un commit termina il loop
+            if action == "commit": 
                 answer = content
                 break
-            elif action == "bash":  # esegue comando nella shell persistente
+            elif action == "bash": 
                 result = await asyncio.to_thread(container.execute, content)
                 result = result.output.decode("utf-8")
                 if len(result) > 800:
                     result = (
                         result[:780] + "\n[truncated because the output is too long]"
                     )
-                session.inject( # simula risposta dell'OS
+                session.inject( 
                     {
                         "role": "user",
                         "content": ("The output of the OS:\n\n" + result)
@@ -655,27 +704,25 @@ If the output is too long, I will truncate it. The truncated output is not compl
                         else "The output of the OS is empty.",
                     }
                 )
-        else: # se supera round_limit status = TASK_LIMIT_REACHED e result = false
+        else: 
             return TaskSampleExecutionResult(
                 status=SampleStatus.TASK_LIMIT_REACHED,
                 result={"result": False, "reason": "round limit"},
             )
 
         if isinstance(answer, str) and config.match and config.match["strip"]:
-            answer = answer.strip() # normaliza la risposta
+            answer = answer.strip() 
         
-        # FASE DI VALUTAZIONE
+        # EVALUATION
         jd = False
         
-        # Primo caso: match diretto (confronto stringa esatta)
+        # Case 1: matching (exact string comparison)
         if config.match:
             if "answer" in config.match:
-                # qui avviene il confronto tra la risposta prodotta e quella di ground truth che determina se il risultato è giusto o meno
                 jd = answer == config.match["answer"]
-            # secondo caso regex
             elif "regex" in config.match:
                 jd = re.search(config.match["regex"], answer) is not None
-        # altrimenti script di validazione
+        # Case 2: validation script(s)
         elif config.check:
             params = [str(answer)]
             for script in config.check:
@@ -695,7 +742,7 @@ If the output is too long, I will truncate it. The truncated output is not compl
                 status=SampleStatus.UNKNOWN, result={"result": False}
             )
         
-        # se la valutazione va a buon fine (a prescindere da risultato giusto o sbagliato) lo statu ssarà COMPLETED
+        # If evaluation succeeds (regardless of answer correctness), mark as COMPLETED
         return TaskSampleExecutionResult(
             status=SampleStatus.COMPLETED, result={"result": jd}
         )

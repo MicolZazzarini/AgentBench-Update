@@ -39,7 +39,7 @@ class Assignment(BaseModel):
     agent: str
     task: str
 
-
+# added reasoning content here for CoT
 class ChatHistoryItem(BaseModel):
     role: Literal["user", "agent"]
     content: str

@@ -3,17 +3,18 @@ import asyncio
 import traceback
 from asyncio.exceptions import TimeoutError, CancelledError
 from typing import TypeVar
-
 import aiohttp
 import uvicorn
 from fastapi import FastAPI, HTTPException, APIRouter
-
 from src.configs import ConfigLoader
 from src.typings import *
 from .task import Task, Session
 
 
 class RunningSampleData:
+    """
+    Container storing runtime information for an active sample session.
+    """
     index: int
     session_id: int
     session: Session
@@ -30,6 +31,16 @@ _T = TypeVar("_T")
 
 
 class TaskWorker:
+    """
+    Worker responsible for executing task samples and exposing
+    an HTTP API for controller interaction.
+
+    The worker:
+    - Executes task samples asynchronously
+    - Manages active sessions
+    - Synchronizes agent ↔ environment interaction
+    - Sends periodic heartbeats to the controller
+    """
     def __init__(
         self,
         task: Task,
@@ -69,6 +80,16 @@ class TaskWorker:
         self.session_lock = asyncio.Lock()
 
     async def _call_controller(self, api: str, data: dict):
+        """
+        Send a POST request to the controller.
+
+        Args:
+            api: Controller API endpoint.
+            data: JSON payload.
+
+        Returns:
+            dict: Controller response.
+        """
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 self.controller_address + api,
@@ -125,6 +146,9 @@ class TaskWorker:
         ))
 
     async def start_sample(self, parameters: WorkerStartSampleRequest):
+        """
+        Start execution of a new sample session.
+        """
         print("job received")
         async with self.session_lock:
             if parameters.session_id in self.session_map:
@@ -157,6 +181,9 @@ class TaskWorker:
         }
 
     async def interact(self, parameters: InteractRequest):
+        """
+        Continue interaction between controller and running session.
+        """
         print("interacting")
         async with self.session_lock:
             running = self.session_map.get(parameters.session_id, None)
@@ -214,6 +241,7 @@ class TaskWorker:
         }
 
     async def sample_status(self, parameters: SampleStatusRequest):
+        """Return status of a running sample."""
         async with self.session_lock:
             if parameters.session_id not in self.session_map:
                 raise HTTPException(status_code=400, detail="No such session")

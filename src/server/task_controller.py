@@ -2,21 +2,28 @@ import argparse
 import asyncio
 import time
 from asyncio.exceptions import TimeoutError
-
 import aiohttp
 import uvicorn
 from aiohttp import ClientTimeout
 from fastapi import FastAPI, HTTPException, APIRouter
-
 from src.typings import *
 
 
 class TimeoutLock(asyncio.Lock):
+    """
+    asyncio.Lock with acquisition timeout support.
+
+    Prevents deadlocks by enforcing a maximum waiting time when
+    attempting to acquire the lock.
+    """
     def __init__(self, timeout, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.timeout = timeout
 
     async def acquire(self) -> Literal[True]:
+        """
+        Acquire the lock with timeout protection.
+        """
         try:
             return await asyncio.wait_for(super().acquire(), self.timeout)
         except TimeoutError:
@@ -24,6 +31,12 @@ class TimeoutLock(asyncio.Lock):
             raise
 
     def handle(self, lock: asyncio.Lock):
+        """
+        Helper context manager used to safely transfer ownership
+        between locks.
+
+        Used when switching from a global lock to a per-resource lock.
+        """
         class _Handler:
             def __init__(self, timeout_lock: TimeoutLock, handle_lock: asyncio.Lock):
                 self.timeout_lock = timeout_lock
@@ -43,9 +56,15 @@ class TimeoutLock(asyncio.Lock):
                     self.timeout_lock.release()
 
         return _Handler(self, lock)
-
+    
+# ---------------------------------------------------------------------
+# Runtime Data Containers
+# ---------------------------------------------------------------------
 
 class SessionData:
+    """
+    Metadata describing an active execution session.
+    """
     name: str
     index: SampleIndex
     start: float
@@ -73,6 +92,9 @@ class SessionData:
 
 
 class WorkerData:
+    """
+    Represents a registered task worker node.
+    """
     id: int
     address: str
     capacity: int
@@ -112,6 +134,9 @@ class WorkerData:
 
 
 class TaskData:
+    """
+    Stores worker pool and indices belonging to a task.
+    """
     indices: List[SampleIndex]
     workers: Dict[int, WorkerData]
 
@@ -133,6 +158,9 @@ class TaskData:
 
 
 class Sessions:
+    """
+    Thread-safe container for all active sessions.
+    """
     def __init__(self):
         self.sessions: Dict[int, SessionData] = {}
         self.lock = None
@@ -171,8 +199,22 @@ class Sessions:
         # assert self.sessions[key].lock.locked()
         del self.sessions[key]
 
+# ---------------------------------------------------------------------
+# Task Controller (Central Scheduler)
+# ---------------------------------------------------------------------
 
 class TaskController:
+    """
+    Central orchestration service.
+
+    Responsibilities:
+    - Worker registration & heartbeat monitoring
+    - Session lifecycle management
+    - Load balancing across workers
+    - Failure recovery & synchronization
+    - Distributed task coordination
+    """
+    
     def __init__(
         self,
         router: APIRouter,

@@ -1,11 +1,18 @@
 import argparse
-
 from src.configs import ConfigLoader
 from src.typings import InstanceFactory
 from .agent import AgentClient
 
 
 def parse_args():
+    """
+    Parse command-line arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments including:
+            --config: Path to the agents configuration file.
+            --agent: Name of the agent to instantiate.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/agents/api_agents.yaml')
     parser.add_argument('--agent', type=str, default='qwen3-chat')
@@ -13,6 +20,12 @@ def parse_args():
 
 
 def interaction(agent: AgentClient):
+    """
+    Run an interactive loop between the user and the agent.
+
+    Args:
+        agent (AgentClient): The instantiated agent client used for inference.
+    """
     try:
         history = []
         while True:

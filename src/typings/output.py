@@ -18,7 +18,7 @@ class TaskSampleExecutionResult(BaseModel):
     status: SampleStatus = SampleStatus.COMPLETED
     result: JSONSerializable = None
 
-
+# added reasoning content
 class AgentOutput(BaseModel):
     status: AgentOutputStatus = AgentOutputStatus.NORMAL
     content: Union[str, None] = None

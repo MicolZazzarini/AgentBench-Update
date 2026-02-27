@@ -1,13 +1,14 @@
 import enum
-
 import requests
-
 from src.typings import *
 from src.utils import *
 from .agent import AgentClient
 
 
 class TaskError(enum.Enum):
+    """
+    Enumeration of possible task execution errors.
+    """
     START_FAILED = "START_FAILED"
     INTERACT_FAILED = "INTERACT_FAILED"
     AGENT_FAILED = "AGENT_FAILED"
@@ -16,14 +17,39 @@ class TaskError(enum.Enum):
 
 
 class TaskClient:
+    """
+    Client responsible for interacting with the task controller service.
+
+    This class manages:
+    - Retrieving available samples
+    - Checking worker concurrency
+    - Running a sample session with an agent
+    - Computing aggregated statistics
+    """
     def __init__(
         self, name: str, controller_address: str = "http://localhost:5000/api", *_, **__,
     ) -> None:
+        """
+        Initialize the TaskClient.
+
+        Args:
+            name (str): Task name registered in the controller.
+            controller_address (str): Base URL of the controller API.
+        """
         self.name = name
         self.controller_address = controller_address
         print("TaskClient created: {} ({})".format(name, controller_address))
 
     def get_indices(self) -> List[SampleIndex]:
+        """
+        Retrieve the list of sample indices available for this task.
+
+        Returns:
+            List[SampleIndex]: Available sample identifiers.
+
+        Raises:
+            AgentBenchException: If the controller response is not successful.
+        """
         result = requests.get(
             self.controller_address + "/get_indices", params={"name": self.name}
         )
@@ -32,6 +58,12 @@ class TaskClient:
         return result.json()
 
     def get_concurrency(self) -> int:
+        """
+        Compute the current available concurrency for this task.
+
+        Returns:
+            int: Number of available execution slots.
+        """
         try:
             result = requests.get(
                 self.controller_address + "/list_workers"
@@ -52,6 +84,22 @@ class TaskClient:
         return concurrency
 
     def run_sample(self, index: SampleIndex, agent: AgentClient) -> TaskClientOutput:
+        """
+        Execute a single sample using the provided agent.
+
+        This method:
+        1. Starts a session on the controller.
+        2. Iteratively interacts until completion.
+        3. Handles agent and network failures.
+        4. Cancels the session on errors.
+
+        Args:
+            index (SampleIndex): Identifier of the sample to run.
+            agent (AgentClient): Agent used for inference.
+
+        Returns:
+            TaskClientOutput: Final output or error information.
+        """
         try:
             result = requests.post(
                 self.controller_address + "/start_sample",
@@ -70,6 +118,8 @@ class TaskClient:
         result = result.json()
         sid = result["session_id"]
         latest_result = result
+
+        # Main interaction loop
         while SampleStatus(result["output"]["status"]) == SampleStatus.RUNNING:
             try:
                 # updated to save reasoning_content too
@@ -129,15 +179,28 @@ class TaskClient:
 
             result = result.json()
             latest_result = result
-        # TODO: check this type and check where history is
         return TaskClientOutput(output=result["output"])
 
     def calculate_overall(self, results: List[TaskOutput]) -> JSONSerializable:
+        """
+        Compute aggregated statistics over multiple task results.
+
+        Args:
+            results (List[TaskOutput]): List of completed task outputs.
+
+        Returns:
+            JSONSerializable: Aggregated validation and custom statistics.
+
+        Raises:
+            TaskNetworkException: If controller aggregation fails.
+        """
         statistics = {s: 0 for s in SampleStatus}
         for result in results:
             statistics[SampleStatus(result.status)] += 1
         for s in SampleStatus:
             statistics[s] /= len(results)
+        
+        # Compute history statistics
         statistics["average_history_length"] = sum(
             [len(result.history) for result in results]
         ) / len(results)
@@ -151,6 +214,8 @@ class TaskClient:
             "total": len(results),
             "validation": statistics,
         }
+
+        # Request additional custom metrics from controller
         res = requests.post(
             self.controller_address + "/calculate_overall",
             json=CalculateOverallRequest(name=self.name, results=results).dict(),

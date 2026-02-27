@@ -11,6 +11,14 @@ from src.typings import (
 
 
 class SessionController:
+    """
+    Synchronization controller coordinating interaction between
+    the agent and the environment.
+
+    This class manages bidirectional communication using asyncio
+    locks and semaphores to ensure ordered execution.
+    """
+
     def __init__(self):
         self.agent_lock = asyncio.Lock()
         self.env_lock = asyncio.Lock()
@@ -22,6 +30,17 @@ class SessionController:
     async def agent_pull(
         self, env_input: Union[AgentOutput, None] = None
     ) -> TaskOutput:
+        """
+        Called by the agent to receive environment output.
+
+        Optionally sends agent output back to the environment.
+
+        Args:
+            env_input (AgentOutput | None): Agent response.
+
+        Returns:
+            TaskOutput: Latest environment output.
+        """
         async with self.agent_lock:
             if env_input is not None:
                 self.env_input = env_input
@@ -32,6 +51,15 @@ class SessionController:
             return self.env_output
 
     async def env_pull(self, history: List[ChatHistoryItem]) -> AgentOutput:
+        """
+        Called by the environment to request agent action.
+
+        Args:
+            history (List[ChatHistoryItem]): Filtered conversation history.
+
+        Returns:
+            AgentOutput: Agent response.
+        """
         print(">> env pull waiting")
         async with self.env_lock:
             self.env_output.history = history
@@ -40,6 +68,12 @@ class SessionController:
             return self.env_input
 
     async def env_finish(self, result: TaskOutput = None) -> None:
+        """
+        Signal session termination from the environment side.
+
+        Args:
+            result (TaskOutput): Final task result.
+        """
         print(">> env finish waiting")
         async with self.env_lock:
             print(">> env finish done")
@@ -50,6 +84,12 @@ class SessionController:
             self.agent_signal.release()
 
     def get_status(self):
+        """
+        Retrieve current synchronization status.
+
+        Returns:
+            dict: Debug information about session state.
+        """
         waiting_for_env = self.agent_lock.locked()
         waiting_for_agent = self.env_lock.locked()
         return {
@@ -61,11 +101,23 @@ class SessionController:
 
 
 class Session:
+    """
+    Represents a single interactive session between an agent
+    and an execution environment.
+    """
     def __init__(self) -> None:
         self.history: List[ChatHistoryItem] = []
         self.controller = SessionController()
 
     def inject(self, item):
+        """
+        Inject messages into session history.
+
+        Supports:
+        - ChatHistoryItem
+        - dict representations
+        - lists of items
+        """
         if not item:
             return
         if isinstance(item, ChatHistoryItem):
@@ -83,6 +135,11 @@ class Session:
 
     @staticmethod
     def _calc_segments(msg: str):
+        """
+        Estimate message size using heuristic segmentation.
+
+        Used to approximate context length limits.
+        """
         segments = 0
         current_segment = ""
         inside_word = False
@@ -110,6 +167,18 @@ class Session:
         return segments
 
     def filter_messages(self, messages: List[ChatHistoryItem]) -> List[ChatHistoryItem]:
+        """
+        Trim conversation history to fit context constraints.
+
+        Keeps only the most recent messages within a
+        segment threshold.
+
+        Args:
+            messages: Full message history.
+
+        Returns:
+            List[ChatHistoryItem]: Filtered history.
+        """
         assert len(messages) % 2 == 1, "Invalid message length"
 
         threshold_segments = 3500
@@ -141,6 +210,15 @@ class Session:
         return return_messages
 
     async def action(self, *injection) -> AgentOutput:
+        """
+        Execute one interaction step.
+
+        Injects messages, requests agent action,
+        and updates session history.
+
+        Returns:
+            AgentOutput: Agent response.
+        """
         print("session.action")
         self.inject(list(injection))
         print("pulling env")
@@ -158,6 +236,9 @@ class Session:
 
 
 class Task:
+    """
+    Abstract base class representing a benchmark task.
+    """
     def __init__(self, name: str, concurrency: int = 1, *args, **kwargs):
         self.name = name
         self.concurrency = concurrency
@@ -178,6 +259,9 @@ class Task:
 
 
 class VirtualTask(Task):
+    """
+    Example mock task used for testing session execution.
+    """
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(name="virtual-task", *args, **kwargs)
 
