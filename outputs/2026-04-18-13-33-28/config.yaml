@@ -1,0 +1,38 @@
+assignments:
+- agent: gpt-oss
+  task: webshop-std
+concurrency:
+  agent:
+    gpt-oss: 5
+  task:
+    webshop-std: 5
+definition:
+  agent:
+    gpt-oss:
+      module: src.client.agents.HTTPAgent
+      parameters:
+        body:
+          max_tokens: 2048
+          model: gpt-oss:latest
+          stream: false
+          temperature: 0
+          think: high
+        headers:
+          Content-Type: application/json
+        name: gpt-oss:latest
+        prompter:
+          args:
+            agent_role: assistant
+          name: role_content_dict
+        return_format: '{response}'
+        url: http://127.0.0.1:11434/api/chat
+  task:
+    webshop-std:
+      module: src.client.TaskClient
+      parameters:
+        concurrency: 1
+        controller_address: http://localhost:5000/api
+        end: 200
+        name: webshop-std
+        start: 0
+output: outputs/2026-04-18-13-33-28
