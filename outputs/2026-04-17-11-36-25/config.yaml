@@ -1,0 +1,40 @@
+assignments:
+- agent: gpt-oss
+  task: alfworld-std
+concurrency:
+  agent:
+    gpt-oss: 5
+  task:
+    alfworld-std: 5
+definition:
+  agent:
+    gpt-oss:
+      module: src.client.agents.HTTPAgent
+      parameters:
+        body:
+          max_tokens: 2048
+          model: gpt-oss:latest
+          stream: false
+          temperature: 0
+          think: high
+        headers:
+          Content-Type: application/json
+        name: gpt-oss:latest
+        prompter:
+          args:
+            agent_role: assistant
+          name: role_content_dict
+        return_format: '{response}'
+        url: http://127.0.0.1:11434/api/chat
+  task:
+    alfworld-std:
+      module: src.client.TaskClient
+      parameters:
+        config_path: src/server/tasks/alfworld/configs/base_config.yaml
+        controller_address: http://localhost:5000/api
+        data_path: /AgentBench/data/alfworld
+        max_step: 35
+        name: alfworld-std
+        prompts_path: src/server/tasks/alfworld/prompts/alfworld_multiturn_plan_first.json
+        split: standard
+output: outputs/2026-04-17-11-36-25
