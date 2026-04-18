@@ -61,7 +61,6 @@ qwen3-chat:
 #
 # Model: qwen3:14b
 # Deployment type: Local (Ollama runtime)
-# Provider: Local inference (no cloud dependency)
 # ============================================================
 qwen3-14b-ollama:
   import: "./ollama-qwen.yaml"
@@ -74,4 +73,30 @@ qwen3-14b-ollama:
       think: true
       stream: false
 
+# ============================================================
+# deepseek r1 model served locally via Ollama
+# ============================================================
+deepseek-r1:
+  import: "./ollama-qwen.yaml"
+  parameters:
+    name: "deepseek-r1:latest"
+    body:
+      model: "deepseek-r1:latest"
+      max_tokens: 2048
+      temperature: 0
+      think: true
+      stream: false
 
+# ============================================================
+# gpt-oss model served locally via Ollama
+# ============================================================
+gpt-oss:
+  import: "./ollama-qwen.yaml"
+  parameters:
+    name: "gpt-oss:latest"
+    body:
+      model: "gpt-oss:latest"
+      max_tokens: 2048
+      temperature: 0
+      think: high
+      stream: false

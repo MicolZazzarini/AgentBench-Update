@@ -24,13 +24,13 @@ parameters:
     stream: false
 
     # Enables reasoning mode for models that support explicit
-    # chain-of-thought separation (e.g., Qwen "thinking" variants).
+    # chain-of-thought separation (e.g."thinking" variants).
     #
     # When set to true:
     # - The model's internal reasoning trace is returned separately
     #   in the `message.thinking` field.
     # - The final user-facing answer is stored in `message.content`.
-    think: true
+    think: high
   prompter:
     # Formats messages using a role/content dictionary structure
     # compatible with chat-based LLM APIs

@@ -10,5 +10,7 @@ definition:
   import: tasks/task_assembly.yaml
 
 start:
-  dbbench-std: 5
-  #os-std: 5
+  # dbbench-std: 5
+  # os-std: 5
+  # alfworld-std: 2
+  webshop-std: 5

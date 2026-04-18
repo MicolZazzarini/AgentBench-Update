@@ -34,30 +34,40 @@ concurrency:
     dbbench-std: 5
 
     # Up to 5 concurrent OS task instances
-    #os-std: 5
+    os-std: 5
+
+    # Up to 5 concurrent alfworld task instances
+    alfworld-std: 5
+
+    # Up to 5 concurrent webshop task instances
+    webshop-std: 5
 
   agent:
     # Up to 5 parallel inference calls using the
-    # locally hosted qwen3-14b model via Ollama.
+    # locally hosted model via Ollama.
     # Adjust based on available GPU/CPU resources.
-    qwen3-14b-ollama: 5
+
+    # qwen3-14b-ollama: 5
+
+    # deepseek-r1: 5
+
+    gpt-oss: 5
 
 
 # ------------------------------------------------------------
 # Agent-to-task assignments
 # ------------------------------------------------------------
 # Defines which agents are evaluated on which tasks.
-#
-# In this configuration:
-# - The local qwen3-14b-ollama model is evaluated on:
-#     • dbbench-std
-#     • os-std
 
 assignments: 
   - agent: 
-      qwen3-14b-ollama
+      # qwen3-14b-ollama
+      # deepseek-r1
+      gpt-oss
     task:
-      - dbbench-std
+      #- dbbench-std
       #- os-std
+      #- alfworld-std
+      - webshop-std
 
 output: "outputs/{TIMESTAMP}"
